@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+
 namespace Login
 {
     public partial class History : Form
@@ -15,62 +16,137 @@ namespace Login
         public History()
         {
             InitializeComponent();
-
         }
+
         public void AddItemToListView(ListViewItem item)
         {
-            // Cek jika item sudah ada di GlobalHistory
             if (!GlobalHistory.HistoryItems.Any(existingItem =>
                 existingItem.Text == item.Text &&
                 existingItem.SubItems[1].Text == item.SubItems[1].Text &&
                 existingItem.SubItems[2].Text == item.SubItems[2].Text &&
                 existingItem.SubItems[3].Text == item.SubItems[3].Text))
             {
-                GlobalHistory.HistoryItems.Add(item); // Tambahkan hanya jika belum ada
+                GlobalHistory.HistoryItems.Add(item);
+                lvwHistory.Items.Add((ListViewItem)item.Clone());
+                UpdateTotalPendapatan();
             }
         }
+
         private void History_Load(object sender, EventArgs e)
         {
-          
-                // Bersihkan kolom sebelumnya (jika ada)
-                lvwHistory.Columns.Clear();
+            lvwHistory.Columns.Clear();
+            lvwHistory.View = View.Details;
+            lvwHistory.FullRowSelect = true;
+            lvwHistory.GridLines = true;
 
-                // Tambahkan kolom ke ListView
-                lvwHistory.Columns.Add("Movie Title", 300);    // Kolom untuk judul film
-                lvwHistory.Columns.Add("Studio", 100);         // Kolom untuk studio
-                lvwHistory.Columns.Add("Show Time", 200);      // Kolom untuk waktu tayang
-                lvwHistory.Columns.Add("Date", 200);           // Kolom untuk tanggal
-                lvwHistory.Columns.Add("Seat Number", 200);    // Kolom untuk nomor kursi
-                lvwHistory.Columns.Add("Ticket Count", 200);   // Kolom untuk jumlah tiket
-                lvwHistory.Columns.Add("Total Price", 300);    // Kolom untuk total harga
+            lvwHistory.Columns.Add("Movie Title", 300);
+            lvwHistory.Columns.Add("Studio", 100);
+            lvwHistory.Columns.Add("Show Time", 200);
+            lvwHistory.Columns.Add("Date", 200);
+            lvwHistory.Columns.Add("Seat Number", 200);
+            lvwHistory.Columns.Add("Ticket Count", 200);
+            lvwHistory.Columns.Add("Total Price", 300);
 
-                // Atur mode tampilan ke Details agar kolom terlihat
-                lvwHistory.View = View.Details;
-                lvwHistory.FullRowSelect = true;  // Memungkinkan baris dipilih sepenuhnya
-                lvwHistory.GridLines = true;      // Tambahkan garis antar baris untuk kejelasan
+            lblTotal.Font = new Font("Times New Roman", 16, FontStyle.Bold);
 
-                // Muat data dari GlobalHistory ke ListView tanpa duplikasi
-                lvwHistory.Items.Clear(); // Pastikan list kosong sebelum diisi ulang
-                foreach (var item in GlobalHistory.HistoryItems)
-                {
-                    lvwHistory.Items.Add((ListViewItem)item.Clone());
-                }
-            }
-            
-
-        private void txtNama_TextChanged(object sender, EventArgs e)
-        {
-
+            LoadHistory();
+            UpdateTotalPendapatan();
         }
 
-        private void lvwHistory_SelectedIndexChanged(object sender, EventArgs e)
+        private void LoadHistory()
         {
+            lvwHistory.Items.Clear();
+            foreach (var item in GlobalHistory.HistoryItems)
+            {
+                lvwHistory.Items.Add((ListViewItem)item.Clone());
+            }
+            UpdateTotalPendapatan();
+        }
 
+        private void btnHapusHistory_Click(object sender, EventArgs e)
+        {
+            if (lvwHistory.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Pilih item untuk dihapus!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            foreach (ListViewItem selectedItem in lvwHistory.SelectedItems)
+            {
+                lvwHistory.Items.Remove(selectedItem);
+
+                var itemToRemove = GlobalHistory.HistoryItems.FirstOrDefault(item =>
+                    item.Text == selectedItem.Text &&
+                    item.SubItems[3].Text == selectedItem.SubItems[3].Text &&
+                    item.SubItems[4].Text == selectedItem.SubItems[4].Text);
+
+                if (itemToRemove != null)
+                {
+                    GlobalHistory.HistoryItems.Remove(itemToRemove);
+                }
+            }
+
+            MessageBox.Show("Item berhasil dihapus.", "Informasi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            UpdateTotalPendapatan();
+        }
+
+        private void btnHome_Click(object sender, EventArgs e)
+        {
+            BOOKING menubooking = new BOOKING();
+            menubooking.Show();
+            this.Hide();
         }
 
         private void btnSearch_Click(object sender, EventArgs e)
         {
+            string keyword = txtNama.Text.Trim();
 
+            // Jika TextBox kosong, tampilkan semua data
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                LoadHistory();
+                return;
+            }
+
+            // Filter data berdasarkan keyword
+            var filteredItems = GlobalHistory.HistoryItems
+                .Where(item => item.SubItems.Cast<ListViewItem.ListViewSubItem>()
+                                             .Any(subItem => subItem.Text.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0))
+                .ToList();
+
+            // Bersihkan ListView sebelum menampilkan hasil pencarian
+            lvwHistory.Items.Clear();
+
+            // Tampilkan hasil pencarian
+            foreach (var item in filteredItems)
+            {
+                lvwHistory.Items.Add((ListViewItem)item.Clone());
+            }
+
+            // Jika tidak ada hasil
+            if (filteredItems.Count == 0)
+            {
+                MessageBox.Show("Tidak ada data yang ditemukan!", "Informasi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
+
+        private void UpdateTotalPendapatan()
+        {
+            decimal totalPendapatan = 0;
+
+            foreach (ListViewItem item in lvwHistory.Items)
+            {
+                // Hilangkan "Rp" dan pemisah ribuan sebelum parsing
+                string totalPriceText = item.SubItems[6].Text.Replace("Rp", "").Replace(".", "").Trim();
+
+                if (decimal.TryParse(totalPriceText, out decimal totalPrice))
+                {
+                    totalPendapatan += totalPrice;
+                }
+            }
+
+            lblTotal.Text = $"Total Pendapatan: Rp{totalPendapatan:N}"; // Format dengan pemisah ribuan
+        }
+
     }
 }
