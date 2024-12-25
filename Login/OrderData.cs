@@ -23,7 +23,12 @@ namespace Login
     }
     public static class GlobalHistory
     {
-        public static List<ListViewItem> HistoryItems { get; } = new List<ListViewItem>();
+       public static List<ListViewItem> HistoryItems { get; } = new List<ListViewItem>();
+
+        public static void AddHistory(ListViewItem item)
+        {
+            HistoryItems.Add(item);
+        }
     }
 
 
